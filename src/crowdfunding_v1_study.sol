@@ -1,10 +1,11 @@
+// for study only
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity >=0.8.0 <0.9.0;
 
 contract CrowdFunding {
    
     enum Estado  {Abierta, Cancelada, Activa}
-   
+
 	address payable public campainManager;
 	string public campainName;
 	string public campainDescription;
@@ -15,12 +16,12 @@ contract CrowdFunding {
     address[] public participantes;
     uint256 public totalParticipaciones;
     uint immutable public CAMPANIN_DUEDATE;
-    
+
     modifier only_manager() {
         require(campainManager == msg.sender,"Only Campain manager");
         _;
     }
-    
+
     constructor(string memory _campainName, string memory _campainDesc,uint256 _campainGoal, uint256 _participationRate, uint256 campainduration)  {
         require(_campainGoal > 0 && _participationRate > 0 );
 		campainName = _campainName;
@@ -31,7 +32,7 @@ contract CrowdFunding {
         campainEstado = Estado.Abierta;
         CAMPANIN_DUEDATE = block.timestamp + campainduration * 1 seconds; //days
     }
-    
+
     function participar() public payable {
         require(msg.value >= participationRate, "Participacion minima no alcanzada" );
         require(campainEstado == Estado.Abierta,"Finalizado plazo participacion");
@@ -69,7 +70,7 @@ contract CrowdFunding {
             campainEstado = Estado.Cancelada;
         }
     }
-   
+
 
     function withdrawCanceledCampain() public {
         require(participaciones[msg.sender] > 0, "fondos retirados");
@@ -85,5 +86,5 @@ contract CrowdFunding {
        // require (campainEstado == Estado.Activa,"Campanya no activa");
         return address(this).balance;
     }
-    
+
 }
