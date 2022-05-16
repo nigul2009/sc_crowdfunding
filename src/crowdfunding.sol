@@ -36,6 +36,7 @@ contract CrowdFunding {
     //PeticionGasto[] public peticionesDeGasto;
     mapping (uint => PeticionGasto) public peticionesDeGasto;
     uint totalPeticionesDeGasto;
+    uint256 totalImportePeticionesDeGasto;
     event NuevaPeticionGasto(uint ID, uint fechacreacion);
     event ResolucionPeticionGasto(uint ID, bool resolucion);
 
@@ -110,7 +111,7 @@ contract CrowdFunding {
     }*/
     
      function	crearPeticionDeGasto(string memory _detalle, uint _importe, address payable _destinatario) public only_manager {
-	    require(_importe <= address(this).balance, "saldo insuficiente");
+	    require( totalImportePeticionesDeGasto + _importe <= address(this).balance, "saldo insuficiente");
 	    require(_destinatario != address(0));
 
         //Nota: no podemos crear peticionesDeGasto como una lista si tenemos un mapping interno. alternativamente tenemos que gestionarlo como un mapping
@@ -127,6 +128,7 @@ contract CrowdFunding {
         
 	    emit NuevaPeticionGasto(totalPeticionesDeGasto, block.timestamp);
         totalPeticionesDeGasto++;
+        totalImportePeticionesDeGasto += _importe;
 	}
     function getNPeticionesDeGasto() public view returns (uint) {
         return totalPeticionesDeGasto;
@@ -161,13 +163,41 @@ contract CrowdFunding {
     }
 
 
-    function votarPeticionGasto(uint IDpeticion, bool aprobar) public {
-       /* TODO ACtividad*/
+    function votarPeticionGasto(uint index, bool aprobar) public {
+         require(index < totalPeticionesDeGasto, "Peticion inexistente" );
+         require(peticionesDeGasto[index].estado == EstadoPeticion.Abierta,"Peticion debe estar activa");
+         require(participaciones[msg.sender] > 0, "solo votan los participantes");
+
+         PeticionGasto storage pt = peticionesDeGasto[index];
+         
+         require(pt.votantes[msg.sender] == false, "El participante ya ha votado");
+
+         uint256 cantParticipaciones = participaciones[msg.sender];
+
+         pt.votantes[msg.sender] = true;
+         pt.votosRealizados += cantParticipaciones;
+         if (aprobar == true)         
+            pt.votosPositivos += cantParticipaciones;  
     }
+
     function resolverPeticion(uint index) public only_manager {
-
-    /* TODO Actividad */
-
+         require(index < totalPeticionesDeGasto, "Peticion inexistente" );
+         require(peticionesDeGasto[index].estado == EstadoPeticion.Abierta,"Peticion debe estar activa");
+         
+         PeticionGasto storage pt = peticionesDeGasto[index];
+         bool resolucion = false;
+         
+         if (pt.votosRealizados < (totalParticipaciones / 2) || pt.votosPositivos <= (pt.votosRealizados / 2)) {
+           pt.estado = EstadoPeticion.Rechazada;
+           totalImportePeticionesDeGasto -= pt.importe;
+         }
+         else {
+           pt.estado = EstadoPeticion.Aprobada;
+           resolucion = true;
+           pt.walletDestinatario.transfer(pt.importe);
+         }
+    
+         emit ResolucionPeticionGasto(index, resolucion);
     }
 
 }
